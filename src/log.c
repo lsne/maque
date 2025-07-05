@@ -2,6 +2,7 @@
 #include <syslog.h>
 #include <time.h>
 #include <unistd.h>
+#include <stdarg.h>
 #include "log.h"
 #include "config.h"
 

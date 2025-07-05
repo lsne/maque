@@ -1,5 +1,19 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h> 
+#include <fcntl.h>
+#include "maque.h"
+#include "config.h"
+#include "log.h"
 
+maqueServer server;
 
+void initServer() {
+    server.ipfd = -1;
+    server.sofd = -1;
+}
 
 void daemonize(void) {
     int fd;
@@ -18,54 +32,64 @@ void daemonize(void) {
     }
 }
 
+void createPidFile(void) {
+    /* Try to write the pid file in a best-effort way. */
+    FILE *fp = fopen(config->pidfile,"w");
+    if (fp) {
+        fprintf(fp,"%d\n",(int)getpid());  // 将当前进程的 pid 写入到 pid 文件中
+        fclose(fp);
+    }
+}
+
 void version() {
-    printf("Redis server version %s (%s:%d)\n", REDIS_VERSION,
-        redisGitSHA1(), atoi(redisGitDirty()) > 0);
+    // printf("Redis server version %s (%s:%d)\n", REDIS_VERSION,
+    //     redisGitSHA1(), atoi(redisGitDirty()) > 0);
+    printf("MaQue server version %s (%s:%d)\n", MAQUE_VERSION,
+        "md5-xxxxx", atoi("1") > 0);
     exit(0);
 }
 
 void usage() {
-    fprintf(stderr,"Usage: ./redis-server [/path/to/redis.conf]\n");
-    fprintf(stderr,"       ./redis-server - (read config from stdin)\n");
+    fprintf(stderr,"Usage: ./maque [/path/to/maque.conf]\n");
+    fprintf(stderr,"       ./maque - (read config from stdin)\n");
     exit(1);
 }
 
 int main(int argc, char **argv) {
     time_t start;                                                   // 创建一个时间类型的变量名称
-
-    initServerConfig();
+    initMaqueConfigDefaults(config);                          // 初始化配置
     if (argc == 2) {
         if (strcmp(argv[1], "-v") == 0 ||
             strcmp(argv[1], "--version") == 0) version();
         if (strcmp(argv[1], "--help") == 0) usage();
-        resetServerSaveParams();                                    // 如果指定了配置文件, 则将设置的默认 save 快照保存策略重置清理
-        loadServerConfig(argv[1]);                        // 根据配置文件配置, 设置相关参数
+        loadMaqueConfigFile(argv[1], config);
     } else if ((argc > 2)) {                                        // 命令行只能有 程序本身 + 配置文件名称, 如果出现多余的参数, 直接报错
         usage();
     } else {                                                       // 不指定配置文件时,会以默认参数启动。这里只是输出一个警告的提示, 不做其他动作
-        redisLog(REDIS_WARNING,"Warning: no config file specified, using the default config. In order to specify a config file use 'redis-server /path/to/redis.conf'");
+        maqueLog(MAQUE_WARNING,"Warning: no config file specified, using the default config. In order to specify a config file use 'maque /path/to/maque.conf'");
     }
-    if (server.daemonize) daemonize();                             // 守护进程方式启动
+    if (config->daemonize) daemonize();                             // 守护进程方式启动
     initServer();                                                  // 初始化服务器
-    if (server.daemonize) createPidFile();
-    redisLog(REDIS_NOTICE,"Server started, Redis version " REDIS_VERSION);
-#ifdef __linux__
-    linuxOvercommitMemoryWarning();                               // 如果是 linux 系统, 则会检测内核参数 overcommit_memory 是否设置为1, 没有设置为1则会输出一个警告信息
-#endif
-    start = time(NULL);                                    // 获取当前时间
-    if (server.appendonly) {
-        if (loadAppendOnlyFile(server.appendfilename) == REDIS_OK)
-            redisLog(REDIS_NOTICE,"DB loaded from append only file: %ld seconds",time(NULL)-start);
-    } else {
-        if (rdbLoad(server.dbfilename) == REDIS_OK)
-            redisLog(REDIS_NOTICE,"DB loaded from disk: %ld seconds",time(NULL)-start);
-    }
-    if (server.ipfd > 0)
-        redisLog(REDIS_NOTICE,"The server is now ready to accept connections on port %d", server.port);
-    if (server.sofd > 0)
-        redisLog(REDIS_NOTICE,"The server is now ready to accept connections at %s", server.unixsocket);
-    aeSetBeforeSleepProc(server.el,beforeSleep);
-    aeMain(server.el);
-    aeDeleteEventLoop(server.el);
+    if (config->daemonize) createPidFile();
+    maqueLog(MAQUE_NOTICE,"Server started, Maque version " MAQUE_VERSION);
+    initServer();
+    printf("test .... config file args: bindaddr - %s", config->bindaddr ? config->bindaddr : "NULL");
+    printf("test .... config file args: port -  %d\n", config->port);
+    printf("test .... config file args: dbnum - %d\n", config->dbnum);
+    printf("test .... config file args: logfile - %s\n", config->logfile ? config->logfile : "NULL");
+    printf("test .... config file args: verbosity - %d\n", config->verbosity);
+    printf("test .... config file args: daemonize - %d \n", config->daemonize);
+    printf("test .... config file args: appendonly - %d \n", config->appendonly);
+    printf("test .... config file args: pidfile - %s \n", config->pidfile ? config->pidfile : "NULL");
+    start = time(NULL);
+    maqueLog(MAQUE_NOTICE,"Server started, Maque version %s, pid %d, running on %s, started at %s",
+        MAQUE_VERSION, (int)getpid(),
+        config->bindaddr ? config->bindaddr : "NULL",
+        ctime(&start));  // ctime() 将时间戳转换为字符串格式
+    // 测试 maqueLog 函数
+    maqueLog(MAQUE_NOTICE, "This is a test log message at NOTICE level.");
+    maqueLog(MAQUE_WARNING, "This is a test log message at WARNING level.");
+    maqueLog(MAQUE_DEBUG, "This is a test log message at DEBUG level.");
+    maqueLog(MAQUE_VERBOSE, "This is a test log message at VERBOSE level.");
     return 0;
 }
