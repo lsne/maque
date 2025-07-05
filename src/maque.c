@@ -65,15 +65,16 @@ int main(int argc, char **argv) {
         loadMaqueConfigFile(argv[1], config);
     } else if ((argc > 2)) {                                        // 命令行只能有 程序本身 + 配置文件名称, 如果出现多余的参数, 直接报错
         usage();
-    } else {                                                       // 不指定配置文件时,会以默认参数启动。这里只是输出一个警告的提示, 不做其他动作
+    } else {                   
+        // 不指定配置文件时,会以默认参数启动。这里只是输出一个警告的提示, 不做其他动作
         maqueLog(MAQUE_WARNING,"Warning: no config file specified, using the default config. In order to specify a config file use 'maque /path/to/maque.conf'");
     }
     if (config->daemonize) daemonize();                             // 守护进程方式启动
     initServer();                                                  // 初始化服务器
     if (config->daemonize) createPidFile();
-    maqueLog(MAQUE_NOTICE,"Server started, Maque version " MAQUE_VERSION);
+    maqueLog(MAQUE_NOTICE,"Server started, MaQue version " MAQUE_VERSION);
     initServer();
-    printf("test .... config file args: bindaddr - %s", config->bindaddr ? config->bindaddr : "NULL");
+    printf("test .... config file args: bindaddr - %s\n", config->bindaddr ? config->bindaddr : "NULL");
     printf("test .... config file args: port -  %d\n", config->port);
     printf("test .... config file args: dbnum - %d\n", config->dbnum);
     printf("test .... config file args: logfile - %s\n", config->logfile ? config->logfile : "NULL");
@@ -82,7 +83,7 @@ int main(int argc, char **argv) {
     printf("test .... config file args: appendonly - %d \n", config->appendonly);
     printf("test .... config file args: pidfile - %s \n", config->pidfile ? config->pidfile : "NULL");
     start = time(NULL);
-    maqueLog(MAQUE_NOTICE,"Server started, Maque version %s, pid %d, running on %s, started at %s",
+    maqueLog(MAQUE_NOTICE,"Server started, MaQue version %s, pid %d, running on %s, started at %s",
         MAQUE_VERSION, (int)getpid(),
         config->bindaddr ? config->bindaddr : "NULL",
         ctime(&start));  // ctime() 将时间戳转换为字符串格式

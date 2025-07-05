@@ -17,7 +17,8 @@
 #define MAQUE_DEFAULT_DBNUM 16           /* 数据库数量 */
 #define MAQUE_DEFAULT_PIDFILE "/var/run/maque.pid"    /* PID file */
 
-MaqueConfig* config; // 全局配置变量
+static MaqueConfig g_config_actual;
+MaqueConfig* config = &g_config_actual; // 全局配置变量
 
 void initMaqueConfigDefaults(MaqueConfig* config) {
     config->port = MAQUE_DEFAULT_SERVERPORT;

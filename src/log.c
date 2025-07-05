@@ -21,7 +21,8 @@ int MAQUE_MAX_LOGMSG_LEN = 1024;       // 默认消息长度
  */
 
 void maqueLog(int level, const char *fmt, ...) {
-    if (level < MAQUE_LOG_VERBOSITY || level > MAQUE_WARNING) return;
+    if (level < MAQUE_DEBUG || level > MAQUE_WARNING) return;
+    if (level < config->verbosity) return;
 
     FILE *fp;
     const char *c = ".-*#";
@@ -30,7 +31,7 @@ void maqueLog(int level, const char *fmt, ...) {
     char buf[64];
     char msg[MAQUE_MAX_LOGMSG_LEN];
 
-    fp = (MAQUE_LOG_FILE_NAME == NULL) ? stdout : fopen(MAQUE_LOG_FILE_NAME,"a");
+    fp = (config->logfile == NULL) ? stdout : fopen(config->logfile,"a");
     if (!fp) return;
 
     va_start(ap, fmt);
