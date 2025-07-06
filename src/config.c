@@ -46,8 +46,8 @@ int loadMaqueConfigFile(const char* filename, MaqueConfig* config) {
          exit(1);
     }
     config->port = iniparser_getint(configfile, "default:port", MAQUE_DEFAULT_SERVERPORT);
-    config->bindaddr = iniparser_getstring(configfile, "default:bindaddr", NULL);
-    config->unixsocket = iniparser_getstring(configfile, "default:unixsocket", NULL);
+    config->bindaddr = strdup(iniparser_getstring(configfile, "default:bindaddr", NULL));
+    config->unixsocket = strdup(iniparser_getstring(configfile, "default:unixsocket", NULL));
     config->pidfile = iniparser_getstring(configfile, "default:pidfile", MAQUE_DEFAULT_PIDFILE);
     config->logfile = iniparser_getstring(configfile, "default:logfile", NULL);
     config->verbosity = iniparser_getint(configfile, "default:verbosity", MAQUE_VERBOSE);

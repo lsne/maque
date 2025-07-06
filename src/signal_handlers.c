@@ -7,8 +7,6 @@
 #include <signal.h>
 #include <stdio.h>
 
-#define MAQUE_NOTUSED(V) ((void)V)
-
 static void *getMcontextEip(ucontext_t *uc) {
 #if defined(__FreeBSD__)
   return (void *)uc->uc_mcontext.mc_eip;

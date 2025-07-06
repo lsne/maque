@@ -2,8 +2,8 @@
 #define MAQUE_CONFIG_H
 typedef struct {
     int port;
-    const char *bindaddr;
-    const char *unixsocket;
+    char *bindaddr;
+    char *unixsocket;
     int dbnum;
     int daemonize;
     int appendonly;

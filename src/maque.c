@@ -1,6 +1,7 @@
 #include "maque.h"
 #include "config.h"
 #include "log.h"
+#include "signal_handlers.h"
 #include "test.h"
 #include <fcntl.h>
 #include <signal.h>
@@ -9,26 +10,88 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include "signal_handlers.h"
 
 maqueServer server;
+
+void oom(const char *msg) {
+    maqueLog(MAQUE_WARNING, "%s: Out of memory\n",msg);
+    sleep(1);
+    abort();
+}
+
+int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
+    // 每 1000 毫秒执行一次的定时任务
+
+    MAQUE_NOTUSED(eventLoop);
+    MAQUE_NOTUSED(id);
+    MAQUE_NOTUSED(clientData);
+
+    server.unixtime = time(NULL); // 更新服务器的当前时间
+    maqueLog(MAQUE_NOTICE, "测试定时任务: 当前时间戳: %ld",
+             server.unixtime); // 记录当前时间戳到日志
+    // 每次执行定时任务时, 返回 1000 毫秒, 以便下次继续执行
+    return 1000;
+}
+
+void beforeSleep(struct aeEventLoop *eventLoop) {
+    MAQUE_NOTUSED(eventLoop);
+    // 在事件循环之前执行的操作
+    maqueLog(MAQUE_NOTICE, "Before sleep: 服务器当前时间戳: %ld",
+             server.unixtime);
+}
 
 void initServer() {
   int j;
   setupSignalHandlers();
-  sleep(1000);
+
+  server.mainthread = pthread_self(); // 获取当前线程的 ID （主线程）
+  server.el = aeCreateEventLoop(); // IO 多路复用机制, 创建 epoll 事件循环
+
+  if (config->port != 0) {
+    server.ipfd = anetTcpServer(server.neterr, config->port,
+                                config->bindaddr); // socket 监听
+    if (server.ipfd == ANET_ERR) {
+      maqueLog(MAQUE_WARNING, "Opening port: %s", server.neterr);
+      exit(1);
+    }
+  }
+  if (config->unixsocket != NULL) {
+    unlink(config->unixsocket); /* don't care if this fails */
+    server.sofd =
+        anetUnixServer(server.neterr, config->unixsocket); // unix socket 监听
+    if (server.sofd == ANET_ERR) {
+      maqueLog(MAQUE_WARNING, "Opening socket: %s", server.neterr);
+      exit(1);
+    }
+  }
+  if (server.ipfd < 0 && server.sofd < 0) {
+    maqueLog(MAQUE_WARNING, "Configured to not listen anywhere, exiting.");
+    exit(1);
+  }
+
+  server.unixtime = time(NULL);
+  aeCreateTimeEvent(
+      server.el, 1000, serverCron, NULL,
+      NULL); // 定时事件的生成， 每 1000 毫秒执行一次 serverCron 函数
+  if (server.ipfd > 0 && aeCreateFileEvent(server.el, server.ipfd, AE_READABLE,
+                                           acceptTcpHandler, NULL) == AE_ERR)
+    oom("creating file event");
+  if (server.sofd > 0 && aeCreateFileEvent(server.el, server.sofd, AE_READABLE,
+                                           acceptUnixHandler, NULL) == AE_ERR)
+    oom("creating file event");
+
+  srand(time(NULL) ^ getpid());
 }
 
 char *getMaqueInfoString(void) {
-    char *info = (char *)malloc(256);
-    info = "this is a test info string";
-    if (info == NULL) {
-        maqueLog(MAQUE_WARNING, "Failed to allocate memory for info string.");
-        return NULL;
-    }
-    return info;
+  char *info = (char *)malloc(256);
+  info = "this is a test info string";
+  if (info == NULL) {
+    maqueLog(MAQUE_WARNING, "Failed to allocate memory for info string.");
+    return NULL;
+  }
+  return info;
 }
-
 
 void daemonize(void) {
   int fd;
@@ -110,11 +173,12 @@ int main(int argc, char **argv) {
 
   maqueLog(MAQUE_NOTICE, "Server started, MaQue version " MAQUE_VERSION);
   start = time(NULL);
-  maqueLog(
-      MAQUE_NOTICE,
-      "Server started, MaQue version %s, pid %d, running on %s, started at %s",
-      MAQUE_VERSION, (int)getpid(),
-      config->bindaddr ? config->bindaddr : "NULL",
-      ctime(&start)); // ctime() 将时间戳转换为字符串格式
+  if (server.ipfd > 0)
+        maqueLog(MAQUE_NOTICE,"The server is now ready to accept connections on port %d", config->port);
+    if (server.sofd > 0)
+        maqueLog(MAQUE_NOTICE,"The server is now ready to accept connections at %s", config->unixsocket);
+    aeSetBeforeSleepProc(server.el,beforeSleep);
+    aeMain(server.el);
+    aeDeleteEventLoop(server.el);
   return 0;
 }
