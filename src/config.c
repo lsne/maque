@@ -30,6 +30,7 @@ void initMaqueConfigDefaults(MaqueConfig* config) {
     config->pidfile = MAQUE_DEFAULT_PIDFILE;
     config->logfile = NULL; /* NULL = log on standard output */
     config->verbosity = MAQUE_VERBOSE;
+    config->shutdown_asap = 0; // 是否需要尽快关闭服务器
 }
 
 int loadMaqueConfigFile(const char* filename, MaqueConfig* config) {
@@ -53,6 +54,7 @@ int loadMaqueConfigFile(const char* filename, MaqueConfig* config) {
     config->daemonize = iniparser_getboolean(configfile, "default:daemonize", 0);
     config->appendonly = iniparser_getboolean(configfile, "default:appendonly", 0);
     config->dbnum = iniparser_getint(configfile, "default:dbnum", MAQUE_DEFAULT_DBNUM);
+    config->shutdown_asap = iniparser_getboolean(configfile, "default:shutdown_asap", 0);
     if (config->port < 0 || config->port > 65535) {
         maqueLog(MAQUE_WARNING, "Invalid port number %d in config file '%s'", config->port, filename);
         iniparser_freedict(configfile);

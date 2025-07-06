@@ -10,6 +10,7 @@ typedef struct {
     const char *pidfile;
     const char *logfile;
     int verbosity;
+    int shutdown_asap;
     // int syslog_enabled;
     // char *syslog_ident;
     // int syslog_facility;

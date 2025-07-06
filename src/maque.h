@@ -22,3 +22,7 @@ typedef struct {
     int ipfd;
     int sofd;
 } maqueServer;
+
+extern maqueServer server;
+
+extern char *getMaqueInfoString(void);
